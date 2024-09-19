@@ -1,21 +1,23 @@
 #define TINY_GSM_MODEM_SIM800
+#define TINY_GSM_TEST_BATTERY true
 #define TINY_GSM_RX_BUFFER 1024 // Tamanho do buffer de recepção
 #define SerialMon Serial
 #define SerialGPRS Serial1
 #define Serial_GPS Serial2
-#define TINY_GSM_TEST_BATTERY true
+
+#define BUFFER_SIZE 500 // Tamanho do buffer
 
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
 #include "utilities.h"
 
 static const uint32_t BAUD_RATE = 9600;
-static const uint32_t GSM_RATE = 115200;
-static const uint32_t GPS_RATE = 230400;
+static const uint32_t GSM_RATE = 115200; // por padrão 
+static const uint32_t GPS_RATE = 230400; // o padrao dos modulos gps e de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
 
-const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; // 6 horas
-const unsigned long SEND_INTERVAL = 1500;
-const unsigned long RECONNECT_INTERVAL = 160000;
+const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; //Reset modulo a cada 6 horas
+const unsigned long SEND_INTERVAL = 2000; // Tempo de envio da localização 2 segundos
+const unsigned long RECONNECT_INTERVAL = 160000; //Verifica se esta conectado a cada 2 minutos 
 
 static unsigned long lastResetTime = 0;
 static unsigned long lastSendTime = 0;
@@ -25,9 +27,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.3.186";
+const char server[] = "XXX.XXX.XXX.XXX"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "739155";
+const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
 
 TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
@@ -162,20 +164,8 @@ void setup()
   modem.restart();
   delay(1000);
 
-  String ccid = modem.getSimCCID();
-  SerialMon.println("CCID: " + ccid);
-
   String imei = modem.getIMEI();
   SerialMon.println("IMEI: " + imei);
-
-  String cop = modem.getOperator();
-  SerialMon.println("Operator: " + cop);
-
-  IPAddress local = modem.localIP();
-  SerialMon.println("Local IP: " + String(local));
-
-  int csq = modem.getSignalQuality();
-  Serial.println("Signal quality: " + String(csq));
 
   SerialMon.print("Conectando a Internet... ");
   connectGPRS();

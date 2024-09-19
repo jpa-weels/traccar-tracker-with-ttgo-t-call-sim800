@@ -58,3 +58,11 @@ void setupModem(){
     digitalWrite(LED_GPIO, LED_OFF);
   
 }
+
+void ledStatus()
+{
+  pinMode(LED_GPIO, OUTPUT);
+  digitalWrite(LED_GPIO, LED_ON);
+  delay(500);
+  digitalWrite(LED_GPIO, LED_OFF);
+}

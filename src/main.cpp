@@ -4,7 +4,6 @@
 #define SerialMon Serial
 #define SerialGPRS Serial1
 #define Serial_GPS Serial2
-
 #define BUFFER_SIZE 500 // Tamanho do buffer
 
 #include <TinyGsmClient.h>
@@ -12,12 +11,12 @@
 #include "utilities.h"
 
 static const uint32_t BAUD_RATE = 9600;
-static const uint32_t GSM_RATE = 115200;
-static const uint32_t GPS_RATE = 230400;
+static const uint32_t GSM_RATE = 115200; // por padrão 
+static const uint32_t GPS_RATE = 230400; // o padrao dos modulos gps e de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
 
-const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; // 6 horas
-const unsigned long SEND_INTERVAL = 1500;
-const unsigned long RECONNECT_INTERVAL = 160000;
+const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; //Reset modulo a cada 6 horas
+const unsigned long SEND_INTERVAL = 2000; // Tempo de envio da localização 2 segundos
+const unsigned long RECONNECT_INTERVAL = 160000; //Verifica se esta conectado a cada 2 minutos 
 
 static unsigned long lastResetTime = 0;
 static unsigned long lastSendTime = 0;
@@ -27,9 +26,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.9.196"; //demo4.traccar.org | você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.3.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "739155"; //mude de acordo com sua preferencia
+const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
 
 TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
@@ -74,14 +73,6 @@ void resetModulo()
   }
 }
 
-void ledStatus()
-{
-  pinMode(LED_GPIO, OUTPUT);
-  digitalWrite(LED_GPIO, LED_ON);
-  delay(500);
-  digitalWrite(LED_GPIO, LED_OFF);
-}
-
 float ajustaVelocidade(float speed)
 {
   if (speed <= 3.00)
@@ -97,7 +88,6 @@ float ajustaVelocidade(float speed)
 // Estrutura para armazenar os dados da localização
 struct LocationData
 {
-
   unsigned long timestamp;
   double latitude;
   double longitude;
@@ -231,7 +221,7 @@ void sendLocation()
         storeInBuffer(data); // Armazena os dados no buffer se não houver conexão
       }
 
-      SerialMon.println("Dados: " + String(data.latitude, 6) + ", " + String(data.longitude, 6));
+      SerialMon.println("Dados: " + String(data.latitude, 6) + ", " + String(data.longitude, 6) + " | " + String(data.timestamp));
     }
   }
 }
@@ -252,13 +242,10 @@ void setup()
 
   SerialMon.println("Restarting modem...");
   modem.restart();
-  delay(1000);
+  delay(4000);
 
   String imei = modem.getIMEI();
   SerialMon.println("IMEI: " + imei);
-
-  int csq = modem.getSignalQuality();
-  Serial.println("Signal quality: " + String(csq));
 
   SerialMon.print("Conectando a Internet... ");
   connectGPRS();
