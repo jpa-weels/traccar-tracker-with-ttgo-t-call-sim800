@@ -27,9 +27,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.3.186";
+const char server[] = "104.237.9.196"; //demo4.traccar.org | você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "739155";
+const char deviceId[] = "739155"; //mude de acordo com sua preferencia
 
 TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
