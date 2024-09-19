@@ -26,3 +26,10 @@ Para garantir a integridade dos dados mesmo em momentos de instabilidade da cone
    ```bash
    git clone https://github.com/usuario/projeto-gps-ttgo-tcall.git
    cd projeto-gps-ttgo-tcall
+
+2. Você pode usar um dos quatro servidor demo ou criar o seu.
+   ```bash
+   https://www.traccar.org/demo-server/
+
+---
+
