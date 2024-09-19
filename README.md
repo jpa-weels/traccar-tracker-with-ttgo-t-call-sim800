@@ -4,7 +4,7 @@
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 ![Licença](https://img.shields.io/badge/licença-MIT-blue)
 
-##Descrição
+## Descrição
 
 Este projeto implementa um rastreador GPS IoT usando o TTGO T-Call ESP32, em conjunto com um módulo GSM SIM800 e um módulo GPS Betian 250. O sistema coleta e transmite dados de localização em tempo real para um servidor Traccar, permitindo o rastreamento do dispositivo em um mapa.
 Para garantir a integridade dos dados mesmo em momentos de instabilidade da conexão, o projeto inclui um sistema de buffer circular, que armazena temporariamente as informações e as envia assim que a conexão GPRS for restaurada.
