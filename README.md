@@ -24,7 +24,7 @@ Para garantir a integridade dos dados mesmo em momentos de instabilidade da cone
 
 1. Clone este repositório:
    ```bash
-   git clone https://github.com/usuario/projeto-gps-ttgo-tcall.git
+   git clone https://github.com/jpa-weels/traccar-tracker-with-ttgo-t-call-sim800.git
    cd projeto-gps-ttgo-tcall
 
 2. Você pode usar um dos quatro servidor demo ou criar o seu.
