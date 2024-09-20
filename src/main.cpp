@@ -11,8 +11,8 @@
 #include "utilities.h"
 
 static const uint32_t BAUD_RATE = 9600;
-static const uint32_t GSM_RATE = 115200; // por padrão 
-static const uint32_t GPS_RATE = 230400; // o padrao dos modulos gps e de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
+static const uint32_t GSM_RATE = 115200; // Padrão, nao deve ser alterado
+static const uint32_t GPS_RATE = 230400; // O padrão dos modulos gps é de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
 
 const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; //Reset modulo a cada 6 horas
 const unsigned long SEND_INTERVAL = 2000; // Tempo de envio da localização 2 segundos
@@ -26,9 +26,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.xxx.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.3.XXX"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "7391xx";      //Mude de acordo com sua preferencia
+const char deviceId[] = "7XX155";      //Mude de acordo com sua preferencia
 
 const int BUFFER_SIZE = 50;  // Número máximo de dados a serem armazenados no buffer
 String buffer[BUFFER_SIZE];  // Array de strings para armazenar as URLs
@@ -57,7 +57,7 @@ void connectGPRS() {
     modem.restart(); // Reinicia o modem se falhar em todas as tentativas
 }
 
-void resetModulo() {
+void resetModulo() { // Uma segurança caso o modulo trave, talves nao seja necessario.
     if (millis() - lastResetTime >= RESET_INTERVAL) {
         SerialMon.println("Reiniciando ESP32...");
         lastResetTime = millis();
@@ -78,11 +78,10 @@ unsigned long getUnixTimestamp() {
         tm.Hour = gps.time.hour();
         tm.Minute = gps.time.minute();
         tm.Second = gps.time.second();
-        return makeTime(tm) - 3 * 3600; // Ajustar o fuso horário (-3 horas para UTC-3)
+        return makeTime(tm); // - 3 * 3600; // Ajustar o fuso horário, aqui na minha localidade não foi necessario  (-3 horas para UTC-3)
     }
     return 0;
 }
-
 
 void addToBuffer(String data) {
     if (bufferCount >= BUFFER_SIZE) {
@@ -139,7 +138,7 @@ void sendLocation() {
 
 void setup(){
   SerialMon.begin(BAUD_RATE);
-  setupModem();
+  setupModem(); // Inicializa o moden go ttgo call em incluide/utilities.h
   delay(10);
 
   Serial_GPS.begin(GPS_RATE, SERIAL_8N1, GPS_RX, GPS_TX);
