@@ -20,6 +20,9 @@ Para garantir a integridade dos dados mesmo em momentos de instabilidade da cone
 
 ---
 
+
+# English
+
 # 🛰️ IoT Project: GPS Tracker with TTGO T-Call ESP32 and Traccar Server
 
 ## Description
