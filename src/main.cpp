@@ -26,7 +26,7 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.3.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.XXX.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
 const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
 

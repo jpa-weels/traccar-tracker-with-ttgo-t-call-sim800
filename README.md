@@ -20,6 +20,26 @@ Para garantir a integridade dos dados mesmo em momentos de instabilidade da cone
 
 ---
 
+
+# English
+
+# 🛰️ IoT Project: GPS Tracker with TTGO T-Call ESP32 and Traccar Server
+
+## Description
+
+This project implements an IoT GPS tracker using the TTGO T-Call ESP32, along with a SIM800 GSM module and a Betian 250 GPS module. The system collects and transmits real-time location data to a Traccar server, allowing the device to be tracked on a map.
+
+To ensure data integrity even during connection instability, the project includes a circular buffer system that temporarily stores information and sends it as soon as the GPRS connection is restored.
+
+---
+
+## Features
+- 📍 Real-time GPS monitoring
+- 📶 GPRS connection for data transmission
+- 💾 Circular buffer to ensure no data is lost
+  
+--- 
+
 ## Instalação
 
 1. Clone este repositório:

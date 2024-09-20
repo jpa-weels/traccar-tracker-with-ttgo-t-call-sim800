@@ -5,18 +5,17 @@
 #define SerialGPRS Serial1
 #define Serial_GPS Serial2
 
-#define BUFFER_SIZE 500 // Tamanho do buffer
-
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
+#include <TimeLib.h>  // Biblioteca para manipular tempo
 #include "utilities.h"
 
 static const uint32_t BAUD_RATE = 9600;
 static const uint32_t GSM_RATE = 115200; // por padrão 
-static const uint32_t GPS_RATE = 230400; // o padrao dos modulos gps e de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
+static const uint32_t GPS_RATE = 230400; // o padrao dos modulos gps é de 9600. Para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
 
 const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; //Reset modulo a cada 6 horas
-const unsigned long SEND_INTERVAL = 2000; // Tempo de envio da localização 2 segundos
+const unsigned long SEND_INTERVAL = 5000; // Tempo de envio da localização 5 segundos
 const unsigned long RECONNECT_INTERVAL = 160000; //Verifica se esta conectado a cada 2 minutos 
 
 static unsigned long lastResetTime = 0;
@@ -27,7 +26,7 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "XXX.XXX.XXX.XXX"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.xxx.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
 const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
 
@@ -35,74 +34,86 @@ TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
 TinyGPSPlus gps;
 
-void connectGPRS()
-{
+void connectGPRS(){
   const int maxAttempts = 5;
   int attempt = 0;
+  unsigned long retryDelay = 5000; // Aumentar progressivamente
 
-  while (attempt < maxAttempts)
-  {
-    if (modem.gprsConnect(APN, USER, PASS))
-    {
+  while (attempt < maxAttempts){
+    if (modem.gprsConnect(APN, USER, PASS)){
       SerialMon.println("\nConectado!");
       IPAddress local = modem.localIP();
       SerialMon.println(local);
       return;
-    }
-    else
-    {
+    } else {
       attempt++;
       SerialMon.print("Falha ao conectar. Tentativa ");
       SerialMon.print(attempt);
       SerialMon.print(" de ");
       SerialMon.println(maxAttempts);
-      delay(5000);
+
+      // Aumentar o intervalo entre tentativas a cada falha
+      delay(retryDelay);
+      retryDelay *= 2; // Dobra o intervalo após cada falha
     }
   }
   SerialMon.println("Falha ao conectar após várias tentativas. Reiniciando modem...");
-  modem.restart();
+  modem.restart(); // Reinicia o modem se falhar em todas as tentativas
 }
 
-void resetModulo()
-{
+void resetModulo(){
   unsigned long currentTime = millis();
-  if (currentTime - lastResetTime >= RESET_INTERVAL)
-  {
+  if (currentTime - lastResetTime >= RESET_INTERVAL){
     SerialMon.println("Reiniciando ESP32...");
     lastResetTime = currentTime;
     ESP.restart();
   }
 }
 
-void ledStatus()
-{
-  pinMode(LED_GPIO, OUTPUT);
-  digitalWrite(LED_GPIO, LED_ON);
-  delay(500);
-  digitalWrite(LED_GPIO, LED_OFF);
-}
-
-float ajustaVelocidade(float speed)
-{
-  if (speed <= 3.00)
-  {
+float ajustaVelocidade(float speed) {
+  if (speed <= 3.00){
     return 0.00;
-  }
-  else
-  {
+  } else {
     return speed;
   }
 }
 
-void sendLocation()
-{
-  if (millis() - lastSendTime > SEND_INTERVAL)
-  {
-    lastSendTime = millis();
-    if (gps.location.isValid())
-    {
+unsigned long getUnixTimestamp(){
+  if (gps.date.isValid() && gps.time.isValid()){
+    int year = gps.date.year();
+    int month = gps.date.month();
+    int day = gps.date.day();
+    int hour = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
 
-      unsigned long timestamp = gps.time.value();
+    // Converter a data/hora do GPS para timestamp Unix
+    tmElements_t tm;
+    tm.Year = year - 1970;  // O timestamp Unix começa em 1970
+    tm.Month = month;
+    tm.Day = day;
+    tm.Hour = hour;
+    tm.Minute = minute;
+    tm.Second = second;
+
+    // Obter o timestamp em UTC
+    unsigned long unixTime = makeTime(tm);
+
+    // Ajustar o fuso horário (-3 horas para UTC-3)
+    unixTime -= 3 * 3600;
+
+    return unixTime;
+  }
+  // Se a data ou hora não for válida, retorne 0 ou outro valor indicativo de erro
+  return 0;
+}
+
+void sendLocation(){
+  if (millis() - lastSendTime > SEND_INTERVAL){
+    lastSendTime = millis();
+    if (gps.location.isValid()){
+
+      unsigned long timestamp = getUnixTimestamp();
       double latitude = gps.location.lat();
       double longitude = gps.location.lng();
       int satellites = gps.satellites.value();
@@ -124,20 +135,17 @@ void sendLocation()
                    "&rssi=" + String(rssi) +
                    "&ignition=1";
 
-      if (modem.isGprsConnected())
-      {
-        if (client.connect(server, port))
-        {
+      if (modem.isGprsConnected()){
+        if (client.connect(server, port)){
 
           client.print(String("GET ") + url + " HTTP/1.1\r\n" +
                        "Host: " + server + "\r\n" +
                        "Connection: close\r\n\r\n");
+          ledStatus();            
           client.stop();
           Serial.println("Dados enviados com sucesso.");
-          ledStatus();
-        }
-        else
-        {
+          
+        } else {
           Serial.println("Falha ao conectar ao servidor.");
         }
       }
@@ -146,8 +154,7 @@ void sendLocation()
   }
 }
 
-void setup()
-{
+void setup(){
   SerialMon.begin(BAUD_RATE);
   setupModem();
   delay(10);
@@ -171,22 +178,21 @@ void setup()
   connectGPRS();
 }
 
-void loop()
-{
-  while (Serial_GPS.available() > 0)
-  {
+void loop(){
+  // Processa dados do GPS
+  while (Serial_GPS.available() > 0){
     gps.encode(Serial_GPS.read());
     sendLocation();
   }
 
-  if (!modem.isGprsConnected())
-  {
-    if (millis() - lastReconnectAttempt > RECONNECT_INTERVAL)
-    {
+  // Verifica se o GPRS ainda está conectado
+  if (!modem.isGprsConnected()){
+    if (millis() - lastReconnectAttempt > RECONNECT_INTERVAL){
       lastReconnectAttempt = millis();
       SerialMon.println("Reconectando ao GPRS...");
       connectGPRS();
     }
   }
+
   resetModulo();
 }
