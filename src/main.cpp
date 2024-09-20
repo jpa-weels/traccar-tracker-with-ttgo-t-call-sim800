@@ -26,9 +26,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.XXX.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.xxx.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
+const char deviceId[] = "7391xx";      //Mude de acordo com sua preferencia
 
 const int BUFFER_SIZE = 50;  // Número máximo de dados a serem armazenados no buffer
 String buffer[BUFFER_SIZE];  // Array de strings para armazenar as URLs
