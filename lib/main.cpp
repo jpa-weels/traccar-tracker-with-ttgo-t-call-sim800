@@ -5,8 +5,6 @@
 #define SerialGPRS Serial1
 #define Serial_GPS Serial2
 
-#define BUFFER_SIZE 500 // Tamanho do buffer
-
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
 #include "utilities.h"
@@ -72,14 +70,6 @@ void resetModulo()
     lastResetTime = currentTime;
     ESP.restart();
   }
-}
-
-void ledStatus()
-{
-  pinMode(LED_GPIO, OUTPUT);
-  digitalWrite(LED_GPIO, LED_ON);
-  delay(500);
-  digitalWrite(LED_GPIO, LED_OFF);
 }
 
 float ajustaVelocidade(float speed)
