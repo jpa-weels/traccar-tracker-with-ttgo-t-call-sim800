@@ -4,10 +4,10 @@
 #define SerialMon Serial
 #define SerialGPRS Serial1
 #define Serial_GPS Serial2
-#define BUFFER_SIZE 500 // Tamanho do buffer
 
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
+#include <TimeLib.h>  // Biblioteca para manipular tempo
 #include "utilities.h"
 
 static const uint32_t BAUD_RATE = 9600;
@@ -30,204 +30,150 @@ const char server[] = "104.237.3.186"; //demo4.traccar.org | Você pode criar se
 const int port = 5055;
 const char deviceId[] = "739155";      //Mude de acordo com sua preferencia
 
+// Defina o tamanho do buffer e as variáveis
+const int BUFFER_SIZE = 50;  // Número máximo de dados a serem armazenados no buffer
+String buffer[BUFFER_SIZE];  // Array de strings para armazenar as URLs
+int bufferStart = 0;         // Posição inicial do buffer (primeira mensagem a ser enviada)
+int bufferEnd = 0;           // Posição final do buffer (última mensagem armazenada)
+
 TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
 TinyGPSPlus gps;
 
-void connectGPRS()
-{
+void connectGPRS(){
   const int maxAttempts = 5;
   int attempt = 0;
+  unsigned long retryDelay = 5000; // Aumentar progressivamente
 
-  while (attempt < maxAttempts)
-  {
-    if (modem.gprsConnect(APN, USER, PASS))
-    {
+  while (attempt < maxAttempts){
+    if (modem.gprsConnect(APN, USER, PASS)){
       SerialMon.println("\nConectado!");
       IPAddress local = modem.localIP();
       SerialMon.println(local);
       return;
-    }
-    else
-    {
+    } else {
       attempt++;
       SerialMon.print("Falha ao conectar. Tentativa ");
       SerialMon.print(attempt);
       SerialMon.print(" de ");
       SerialMon.println(maxAttempts);
-      delay(5000);
+
+      // Aumentar o intervalo entre tentativas a cada falha
+      delay(retryDelay);
+      retryDelay *= 2; // Dobra o intervalo após cada falha
     }
   }
   SerialMon.println("Falha ao conectar após várias tentativas. Reiniciando modem...");
-  modem.restart();
+  modem.restart(); // Reinicia o modem se falhar em todas as tentativas
 }
 
-void resetModulo()
-{
+void resetModulo(){
   unsigned long currentTime = millis();
-  if (currentTime - lastResetTime >= RESET_INTERVAL)
-  {
+  if (currentTime - lastResetTime >= RESET_INTERVAL){
     SerialMon.println("Reiniciando ESP32...");
     lastResetTime = currentTime;
     ESP.restart();
   }
 }
 
-float ajustaVelocidade(float speed)
-{
-  if (speed <= 3.00)
-  {
+float ajustaVelocidade(float speed){
+  if (speed <= 3.00){
     return 0.00;
-  }
-  else
-  {
+  } else {
     return speed;
   }
 }
 
-// Estrutura para armazenar os dados da localização
-struct LocationData
-{
-  unsigned long timestamp;
-  double latitude;
-  double longitude;
-  int satellites;
-  float speed;
-  float course;
-  float altitude;
-  float battery;
-  int rssi;
-};
+unsigned long getUnixTimestamp(){
+  if (gps.date.isValid() && gps.time.isValid()){
+    // Obter os valores do GPS
+    int year = gps.date.year();
+    int month = gps.date.month();
+    int day = gps.date.day();
+    int hour = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
 
-LocationData buffer[BUFFER_SIZE]; // Buffer para armazenar os dados
-int bufferStart = 0;              // Índice do dado mais antigo
-int bufferEnd = 0;                // Próximo índice disponível no buffer
-int bufferCount = 0;              // Contador para saber quantos itens estão no buffer
+    // Converter a data/hora do GPS para timestamp Unix
+    tmElements_t tm;
+    tm.Year = year - 1970;  // O timestamp Unix começa em 1970
+    tm.Month = month;
+    tm.Day = day;
+    tm.Hour = hour;
+    tm.Minute = minute;
+    tm.Second = second;
 
-// Função para enviar os dados armazenados no buffer do mais antigo para o mais novo
-void sendBufferedData()
-{
-  if (modem.isGprsConnected() && bufferCount > 0)
-  {
-    while (bufferCount > 0)
-    {
-      LocationData data = buffer[bufferStart];
+    // Obter o timestamp em UTC
+    unsigned long unixTime = makeTime(tm);
+
+    // Ajustar o fuso horário (-3 horas para UTC-3)
+    unixTime -= 3 * 3600;
+    return unixTime;
+  }
+  // Se a data ou hora não for válida, retorne 0 ou outro valor indicativo de erro
+  return 0;
+}
+
+void addToBuffer(String data) {
+  if ((bufferEnd + 1) % BUFFER_SIZE == bufferStart) {
+    SerialMon.println("Buffer está cheio. Dados mais antigos serão sobrescritos.");
+    bufferStart = (bufferStart + 1) % BUFFER_SIZE; // Move o início para liberar espaço
+  }
+  buffer[bufferEnd] = data;
+  bufferEnd = (bufferEnd + 1) % BUFFER_SIZE;
+}
+
+void sendLocation() {
+  if (millis() - lastSendTime > SEND_INTERVAL) {
+    lastSendTime = millis();
+    if (gps.location.isValid()) {
+      unsigned long timestamp = getUnixTimestamp();
+      double latitude = gps.location.lat();
+      double longitude = gps.location.lng();
+      int satellites = gps.satellites.value();
+      float speed = ajustaVelocidade(gps.speed.kmph());
+      float course = gps.course.deg();
+      float altitude = gps.altitude.meters();
+      float battery = modem.getBattVoltage() / 1000.0F;
+      int rssi = modem.getSignalQuality();
 
       String url = "/?id=" + String(deviceId) +
-                   "&timestamp=" + String(data.timestamp) +
-                   "&lat=" + String(data.latitude, 6) +
-                   "&lon=" + String(data.longitude, 6) +
-                   "&sat=" + String(data.satellites) +
-                   "&speed=" + String(data.speed, 1) +
-                   "&bearing=" + String(data.course, 1) +
-                   "&altitude=" + String(data.altitude, 1) +
-                   "&battery=" + String(data.battery) +
-                   "&rssi=" + String(data.rssi) +
+                   "&timestamp=" + String(timestamp) +
+                   "&lat=" + String(latitude, 6) +
+                   "&lon=" + String(longitude, 6) +
+                   "&sat=" + String(satellites) +
+                   "&speed=" + String(speed, 1) +
+                   "&bearing=" + String(course, 1) +
+                   "&altitude=" + String(altitude, 1) +
+                   "&battery=" + String(battery) +
+                   "&rssi=" + String(rssi) +
                    "&ignition=1";
 
-      if (client.connect(server, port))
-      {
-        client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+      addToBuffer(url);  // Adicione a URL ao buffer
+      SerialMon.println("Dados armazenados no buffer: " + url);
+    }
+  }
+
+  if (modem.isGprsConnected()) {
+    while (bufferStart != bufferEnd) {
+      if (client.connect(server, port)) {
+        String data = buffer[bufferStart];
+        client.print(String("GET ") + data + " HTTP/1.1\r\n" +
                      "Host: " + server + "\r\n" +
                      "Connection: close\r\n\r\n");
+        ledStatus();             
         client.stop();
-        Serial.println("Dados do buffer enviados com sucesso.");
-
-        // Atualiza o índice e contador do buffer
+        SerialMon.println("Dados enviados com sucesso: " + data);
         bufferStart = (bufferStart + 1) % BUFFER_SIZE;
-        bufferCount--; // Diminui a quantidade de dados no buffer
-      }
-      else
-      {
-        Serial.println("Falha ao conectar ao servidor.");
-        break; // Se a conexão falhar, interrompa o envio
+      } else {
+        SerialMon.println("Falha ao conectar ao servidor.");
+        break;
       }
     }
   }
 }
 
-// Função para armazenar os dados no buffer de forma circular
-void storeInBuffer(LocationData data)
-{
-  buffer[bufferEnd] = data;                  // Armazena os dados no próximo índice disponível
-  bufferEnd = (bufferEnd + 1) % BUFFER_SIZE; // Atualiza o índice de onde armazenar os próximos dados
-
-  if (bufferCount < BUFFER_SIZE)
-  {
-    bufferCount++; // Incrementa o contador se o buffer não estiver cheio
-  }
-  else
-  {
-    // Se o buffer estiver cheio, mova o início para o próximo dado
-    bufferStart = (bufferStart + 1) % BUFFER_SIZE;
-    Serial.println("Buffer cheio. Sobrescrevendo o dado mais antigo.");
-  }
-}
-
-void sendLocation()
-{
-  if (millis() - lastSendTime > SEND_INTERVAL)
-  {
-    lastSendTime = millis();
-
-    if (gps.location.isValid())
-    {
-      LocationData data;
-      data.timestamp = gps.time.value();
-      data.latitude = gps.location.lat();
-      data.longitude = gps.location.lng();
-      data.satellites = gps.satellites.value();
-      data.speed = ajustaVelocidade(gps.speed.kmph());
-      data.course = gps.course.deg();
-      data.altitude = gps.altitude.meters();
-      data.battery = modem.getBattVoltage() / 1000.0F;
-      data.rssi = modem.getSignalQuality();
-
-      if (modem.isGprsConnected())
-      {
-        sendBufferedData(); // Tenta enviar os dados armazenados no buffer
-
-        // Criar o URL para enviar os dados atuais
-        String url = "/?id=" + String(deviceId) +
-                     "&timestamp=" + String(data.timestamp) +
-                     "&lat=" + String(data.latitude, 6) +
-                     "&lon=" + String(data.longitude, 6) +
-                     "&sat=" + String(data.satellites) +
-                     "&speed=" + String(data.speed, 1) +
-                     "&bearing=" + String(data.course, 1) +
-                     "&altitude=" + String(data.altitude, 1) +
-                     "&battery=" + String(data.battery) +
-                     "&rssi=" + String(data.rssi) +
-                     "&ignition=1";
-
-        // Enviar os dados via HTTP
-        if (client.connect(server, port))
-        {
-          client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-                       "Host: " + server + "\r\n" +
-                       "Connection: close\r\n\r\n");
-          client.stop();
-          SerialMon.println("Dados enviados com sucesso.");
-          ledStatus(); // Função para indicar sucesso no envio
-        }
-        else
-        {
-          SerialMon.println("Falha ao conectar ao servidor.");
-          storeInBuffer(data); // Armazena os dados no buffer se falhar o envio
-        }
-      }
-      else
-      {
-        storeInBuffer(data); // Armazena os dados no buffer se não houver conexão
-      }
-
-      SerialMon.println("Dados: " + String(data.latitude, 6) + ", " + String(data.longitude, 6) + " | " + String(data.timestamp));
-    }
-  }
-}
-
-void setup()
-{
+void setup(){
   SerialMon.begin(BAUD_RATE);
   setupModem();
   delay(10);
@@ -250,19 +196,15 @@ void setup()
   SerialMon.print("Conectando a Internet... ");
   connectGPRS();
 }
-
-void loop()
-{
-  while (Serial_GPS.available() > 0)
-  {
+void loop(){
+  // Processa dados do GPS
+  while (Serial_GPS.available() > 0){
     gps.encode(Serial_GPS.read());
     sendLocation();
   }
-
-  if (!modem.isGprsConnected())
-  {
-    if (millis() - lastReconnectAttempt > RECONNECT_INTERVAL)
-    {
+  // Verifica se o GPRS ainda está conectado
+  if (!modem.isGprsConnected()){
+    if (millis() - lastReconnectAttempt > RECONNECT_INTERVAL){
       lastReconnectAttempt = millis();
       SerialMon.println("Reconectando ao GPRS...");
       connectGPRS();
