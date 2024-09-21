@@ -15,7 +15,7 @@ static const uint32_t GSM_RATE = 115200; // Padrão, nao deve ser alterado
 static const uint32_t GPS_RATE = 230400; // O padrão dos modulos gps é de 9600. para alterar vc precisa de um software https://content.u-blox.com/sites/default/files/2024-06/u-centersetup_v24.05.zip e uma plada de conexao usb to ttl FT232l
 
 const unsigned long RESET_INTERVAL = 6UL * 60UL * 60UL * 1000UL; //Reset modulo a cada 6 horas
-const unsigned long SEND_INTERVAL = 2000; // Tempo de envio da localização 2 segundos
+const unsigned long SEND_INTERVAL = 5000; // Tempo de envio da localização 2 segundos
 const unsigned long RECONNECT_INTERVAL = 160000; //Verifica se esta conectado a cada 2 minutos 
 
 static unsigned long lastResetTime = 0;
@@ -26,14 +26,13 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.3.XXX"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.3.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "7XX155";      //Mude de acordo com sua preferencia
+const char deviceId[] = "739155"; //Mude de acordo com sua preferencia
 
-const int BUFFER_SIZE = 50;  // Número máximo de dados a serem armazenados no buffer
-String buffer[BUFFER_SIZE];  // Array de strings para armazenar as URLs
+const int BUFFER_SIZE = 50; // Número máximo de dados a serem armazenados no buffer
+String buffer[BUFFER_SIZE]; // Array de strings para armazenar as URLs
 int bufferCount = 0;
-
 
 TinyGsm modem(SerialGPRS);
 TinyGsmClient client(modem);
@@ -68,6 +67,7 @@ void resetModulo() { // Uma segurança caso o modulo trave, talves nao seja nece
 float ajustSpeed(float speed) {
     return speed <= 3.00 ? 0.00 : speed;
 }
+
  // Converter a data/hora do GPS para timestamp Unix
 unsigned long getUnixTimestamp() {
     if (gps.date.isValid() && gps.time.isValid()) {
