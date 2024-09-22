@@ -8,7 +8,9 @@
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
 #include <TimeLib.h>  // Biblioteca para manipular tempo
-#include "utilities.h"
+
+#include "TTGOTCALL.h" // Para esp32 ttgo t Call sim800l
+//#include "ESP32.h" // Para modulos separados esp32, sim800l, ublox m9
 
 static const uint32_t BAUD_RATE = 9600;
 static const uint32_t GSM_RATE = 115200; // Padrão, nao deve ser alterado
@@ -26,9 +28,9 @@ static unsigned long lastReconnectAttempt = 0;
 #define USER "claro"
 #define PASS "claro"
 
-const char server[] = "104.237.3.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
+const char server[] = "104.237.XXX.186"; //demo4.traccar.org | Você pode criar seu proprio servidor em traccar.org
 const int port = 5055;
-const char deviceId[] = "739155"; //Mude de acordo com sua preferencia
+const char deviceId[] = "7391XX"; //Mude de acordo com sua preferencia
 
 const int BUFFER_SIZE = 50; // Número máximo de dados a serem armazenados no buffer
 String buffer[BUFFER_SIZE]; // Array de strings para armazenar as URLs
