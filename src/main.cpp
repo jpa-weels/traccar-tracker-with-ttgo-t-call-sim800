@@ -8,9 +8,8 @@
 #include <TinyGsmClient.h>
 #include <TinyGPS++.h>
 #include <TimeLib.h>  // Biblioteca para manipular tempo
-
-#include "TTGOTCALL.h" // Para esp32 ttgo t Call sim800l
-//#include "ESP32.h" // Para modulos separados esp32, sim800l, ublox m9
+#include "TTGOTCALL.h"
+//#include "ESP32.h"
 
 static const uint32_t BAUD_RATE = 9600;
 static const uint32_t GSM_RATE = 115200; // Padrão, nao deve ser alterado
